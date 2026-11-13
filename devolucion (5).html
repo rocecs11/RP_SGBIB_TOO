@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% from "_macros.html" import badge %}
+{% block titulo %}{{ 'Devoluciones' if modo == 'devoluciones' else 'Préstamos' }}{% endblock %}
+{% block contenido %}
+<header class="encabezado">
+  <div><h1>{{ 'Registrar devolución' if modo == 'devoluciones' else 'Préstamos activos' }}</h1>
+  <p class="muted">{{ 'Busque el préstamo y presione «Devolver» al recibir el ejemplar.' if modo == 'devoluciones' else 'Ejemplares que aún no han sido devueltos.' }}</p></div>
+  {% if modo != 'devoluciones' %}<a class="btn primario" href="{{ url_for('prestamos.nuevo') }}">+ Nuevo préstamo</a>{% endif %}
+</header>
+<section class="panel">
+  <form class="buscador" method="get"><input name="q" value="{{ q }}" placeholder="Buscar por usuario, código de ejemplar o título…"><button class="btn">Buscar</button></form>
+  {% if filas %}
+  <table><thead><tr><th>Usuario</th><th>Libro</th><th>Ejemplar</th><th>Entrega</th><th>Devolución prevista</th><th>Estado</th><th></th></tr></thead><tbody>
+  {% for f in filas %}<tr>
+    <td><b>{{ f.usuario.nombre_completo }}</b><br><small class="muted">{{ f.usuario.identificacion }}</small></td>
+    <td>{{ f.libro.titulo }}</td><td>{{ f.ejemplar.codigo }}</td>
+    <td>{{ f.p.fecha_prestamo|fecha }}</td><td>{{ f.p.fecha_devolucion_estimada|fecha }}</td>
+    <td>{% if f.vencido %}{{ badge('con retraso') }} <small>{{ f.dias_retraso }} d</small>{% else %}{{ badge('activo') }}{% endif %}</td>
+    <td class="der"><a class="btn pequeño {{ 'primario' if modo == 'devoluciones' }}" href="{{ url_for('prestamos.devolver', id_prestamo=f.p.id_prestamo) }}">Devolver</a></td></tr>{% endfor %}
+  </tbody></table>
+  {% else %}<p class="vacio">No hay préstamos activos{{ ' con ese criterio' if q }}.</p>{% endif %}
+</section>
+{% endblock %}

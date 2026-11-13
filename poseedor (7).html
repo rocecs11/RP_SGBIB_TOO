@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iniciar sesión · SGBIB</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+</head>
+<body class="login-fondo">
+  <form class="login-caja" method="post">
+    <div class="login-logo">📚</div>
+    <h1>Sistema de Biblioteca</h1>
+    <p class="muted">{{ nombre_biblioteca }} · Acceso del personal bibliotecario</p>
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% for categoria, texto in mensajes %}<div class="aviso {{ categoria }}">{{ texto }}</div>{% endfor %}
+    {% endwith %}
+    <label>Usuario<input name="usuario" autofocus required placeholder="Ej. admin"></label>
+    <label>Contraseña<input type="password" name="contrasena" required placeholder="••••••••"></label>
+    <button class="btn primario ancho">Ingresar</button>
+    <p class="muted pequeño">Prototipo · usuario de prueba: <b>admin</b> / <b>admin123</b></p>
+  </form>
+</body>
+</html>

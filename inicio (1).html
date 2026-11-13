@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% from "_macros.html" import badge %}
+{% block titulo %}{{ libro.titulo }}{% endblock %}
+{% block contenido %}
+<p class="migas"><a href="{{ url_for('catalogo.lista') }}">← Catálogo</a></p>
+<header class="encabezado"><div><h1>{{ libro.titulo }}</h1><p class="muted">{{ libro.autor }} · ISBN {{ libro.isbn }} · {{ libro.editorial }} {{ libro.anio_publicacion or '' }}</p></div></header>
+
+<details class="panel plegable" open>
+  <summary>+ Agregar ejemplar de este título</summary>
+  <form method="post" action="{{ url_for('catalogo.nuevo_ejemplar', id_titulo=libro.id_titulo) }}" class="formulario rejilla">
+    <label>Código del ejemplar *<input name="codigo" required placeholder="Ej. CC-003"></label>
+    <label>Ubicación<input name="ubicacion" placeholder="Ej. Estante A1"></label>
+    <div class="acciones"><button class="btn primario">Guardar ejemplar</button><span class="muted pequeño">Inicia como disponible.</span></div>
+  </form>
+</details>
+
+<section class="panel">
+  <h2>Ejemplares ({{ ejemplares|length }})</h2>
+  {% if ejemplares %}
+  <table><thead><tr><th>Código</th><th>Ubicación</th><th>Adquisición</th><th>Estado</th><th class="der">Cambiar estado</th></tr></thead><tbody>
+  {% for e in ejemplares %}<tr>
+    <td><b>{{ e.codigo }}</b></td><td>{{ e.ubicacion or '—' }}</td><td>{{ e.fecha_adquisicion|fecha }}</td>
+    <td>{{ badge(e.estado) }}{% if e.motivo %} <small class="muted">({{ e.motivo }})</small>{% endif %}</td>
+    <td class="der">
+      {% if e.estado == 'prestado' %}<small class="muted">Prestado: registre su devolución</small>
+      {% elif e.estado == 'disponible' %}
+        <form method="post" action="{{ url_for('catalogo.estado_ejemplar', id_ejemplar=e.id_ejemplar) }}" class="en-linea">
+          <input type="hidden" name="estado" value="fuera de servicio">
+          <select name="motivo"><option value="daño">Daño</option><option value="mantenimiento">Mantenimiento</option></select>
+          <button class="btn pequeño peligro">Marcar fuera de servicio</button></form>
+      {% else %}
+        <form method="post" action="{{ url_for('catalogo.estado_ejemplar', id_ejemplar=e.id_ejemplar) }}" class="en-linea">
+          <input type="hidden" name="estado" value="disponible"><button class="btn pequeño">Volver a disponible</button></form>
+      {% endif %}</td></tr>{% endfor %}
+  </tbody></table>
+  {% else %}<p class="vacio">Este título aún no tiene ejemplares.</p>{% endif %}
+</section>
+{% endblock %}

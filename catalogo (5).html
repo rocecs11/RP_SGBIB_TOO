@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% from "_macros.html" import badge %}
+{% block titulo %}Disponibilidad{% endblock %}
+{% block contenido %}
+<header class="encabezado"><div><h1>Consultar disponibilidad</h1><p class="muted">Vea el estado de cada ejemplar antes de atender una solicitud.</p></div></header>
+<section class="panel">
+  <form class="buscador" method="get"><input name="q" value="{{ q }}" placeholder="Buscar por título, autor o ISBN…" autofocus><button class="btn primario">Consultar</button></form>
+  {% for l, ejs in resultados %}
+  <div class="libro-bloque">
+    <div class="libro-cab"><div><b>{{ l.titulo }}</b><br><small class="muted">{{ l.autor }} · ISBN {{ l.isbn }}</small></div>
+      <div class="resumen-disp">{% set d = ejs|selectattr('estado','equalto','disponible')|list|length %}
+        <span class="num-chico {{ 'verde' if d else 'rojo' }}">{{ d }}</span> disponible(s) de {{ ejs|length }}</div></div>
+    {% if ejs %}<div class="chips">{% for e in ejs %}<div class="chip"><b>{{ e.codigo }}</b>{{ badge(e.estado) }}{% if e.motivo %}<small class="muted">{{ e.motivo }}</small>{% endif %}</div>{% endfor %}</div>
+    {% else %}<p class="muted pequeño">Sin ejemplares registrados.</p>{% endif %}
+  </div>
+  {% else %}<p class="vacio">No se encontraron resultados para «{{ q }}».</p>{% endfor %}
+</section>
+{% endblock %}

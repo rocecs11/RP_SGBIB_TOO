@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% from "_macros.html" import badge %}
+{% block titulo %}Registrar devolución{% endblock %}
+{% block contenido %}
+<p class="migas"><a href="{{ url_for('prestamos.devoluciones') }}">← Devoluciones</a></p>
+<header class="encabezado"><div><h1>Registrar devolución</h1><p class="muted">Confirme los datos del préstamo y registre la recepción del ejemplar.</p></div></header>
+
+<section class="panel resumen">
+  <div><span class="muted pequeño">Usuario</span><b>{{ f.usuario.nombre_completo }}</b><small>{{ f.usuario.identificacion }}</small></div>
+  <div><span class="muted pequeño">Libro</span><b>{{ f.libro.titulo }}</b><small>Ejemplar {{ f.ejemplar.codigo }}</small></div>
+  <div><span class="muted pequeño">Entrega</span><b>{{ f.p.fecha_prestamo|fecha }}</b></div>
+  <div><span class="muted pequeño">Debía devolverlo</span><b>{{ f.p.fecha_devolucion_estimada|fecha }}</b></div>
+</section>
+{% if f.vencido %}<div class="aviso warning">Este préstamo está vencido hace <b>{{ f.dias_retraso }} día(s)</b>. Al confirmar se registrará el retraso y quedará asociado al préstamo y al usuario.</div>{% endif %}
+
+<form method="post" class="panel formulario">
+  <label>Observaciones (opcional)<textarea name="observaciones" rows="2" placeholder="Estado en que se recibe el ejemplar…"></textarea></label>
+  <label class="check"><input type="checkbox" name="fuera_de_servicio" value="1" id="chk-fs"> El ejemplar queda fuera de servicio</label>
+  <label id="bloque-motivo" hidden>Motivo
+    <select name="motivo"><option value="daño">Daño</option><option value="mantenimiento">Mantenimiento</option></select></label>
+  <div class="acciones"><button class="btn primario">Confirmar devolución</button><a class="btn" href="{{ url_for('prestamos.devoluciones') }}">Cancelar</a></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+  const chk = document.getElementById('chk-fs'), blq = document.getElementById('bloque-motivo');
+  chk.addEventListener('change', () => blq.hidden = !chk.checked);
+</script>
+{% endblock %}
