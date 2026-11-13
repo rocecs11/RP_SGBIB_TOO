@@ -1,33 +1,48 @@
 # SGBIB – Sistema de gestión de préstamos para una biblioteca (Etapa 2)
 
-Python + Flask + HTML/CSS (+ SQLite en la persistencia real).
+Python + Flask + HTML/CSS + SQLite. Los datos se guardan en `database/biblioteca.db` y sobreviven al cierre del programa.
 
-## Cómo ejecutarlo
-```
-pip install flask
-python app.py          # abrir http://127.0.0.1:5000 (en Windows: py app.py)
-```
-Usuario de prueba: `admin` / `admin123`
+## Requisitos
+- Python 3.10 o superior (probado con 3.13) y `pip`.
+- Un navegador web (Chrome, Edge o Firefox).
 
-## Estructura (coincide con el diagrama de paquetes)
+## Instalar y ejecutar
+```
+pip install -r requirements.txt        # instala Flask
+python app.py                          # en Windows: py app.py
+```
+Abrir http://127.0.0.1:5000 · usuario de prueba: `admin` / `admin123` (solo pruebas).
+
+Al primer arranque `biblioteca.db` se crea sola (tablas de `database/schema.sql` + usuario `admin`), pero **vacía**.
+Para cargar datos de ejemplo (usuarios, títulos, ejemplares, préstamos, un retraso):
+```
+python database/init_db.py --demo
+```
+Otras opciones: `--reset` borra la base y la crea de nuevo (`--reset --demo` = base nueva con ejemplos).
+Detener el servidor con Ctrl+C. Al volver a ejecutar, la información sigue ahí.
+
+## Configuración (opcional, variables de entorno)
+| Variable | Efecto |
+|---|---|
+| `SGBIB_DB` | Ruta alternativa del archivo `.db` |
+| `SGBIB_ADMIN_PASSWORD` | Contraseña inicial de `admin` (antes de crear la base) |
+| `SGBIB_SECRET_KEY` | Clave de sesión de Flask |
+
+No hay contraseñas reales ni claves privadas en el código; la contraseña del bibliotecario se guarda cifrada.
+
+## Pruebas
+```
+python -m unittest discover -s tests -v
+```
+Usan una base temporal; no tocan `biblioteca.db`.
+
+## Estructura (coincide con los diagramas de paquetes y componentes)
 - `app.py`, `config.py` – arranque y configuración.
-- `routes/` – controladores (Blueprints): auth, usuarios, catálogo, préstamos/devoluciones, consultas. `_helpers.py` arma las filas de las tablas.
-- `templates/`, `static/css/` – interfaz (Jinja2 + CSS propio).
-- `services/` – lógica de negocio. **Ahora son versiones de DEMOSTRACIÓN con datos en memoria (`_demo_datos.py`).**
-- `models/` – las 8 clases del diagrama de clases de diseño.
+- `routes/` – controladores (Blueprints). `templates/`, `static/css/` – interfaz.
+- `services/` – lógica de negocio (reglas RN-01 a RN-15); no escriben SQL.
+- `models/` – las 8 clases del diseño.
+- `repositories/` – persistencia: `db.py` (conexión y transacciones) y un repositorio por entidad (retrasos van en `DevolucionRepository`).
+- `database/` – `schema.sql` (tablas), `init_db.py` (crear/reiniciar/cargar ejemplos), `biblioteca.db` (se genera).
+- `tests/` – pruebas de persistencia, reglas y flujo web.
 
-## Integración con la lógica (Alfonso) y la persistencia (Katia)
-La interfaz solo usa las instancias de `services/__init__.py` y espera estos métodos.
-Para integrar: reemplazar el contenido de `services/` por los servicios reales, o ajustar los nombres en `routes/` y `routes/_helpers.py`.
-Los errores de reglas de negocio deben lanzarse como `ReglaNegocioError(mensaje)` (el mensaje se muestra al bibliotecario).
-
-| Servicio | Método esperado | Devuelve |
-|---|---|---|
-| autenticacion_service | iniciar_sesion(usuario, contrasena) | Bibliotecario o None |
-| usuario_service | listar(texto), obtener(id), registrar(nombre, apellido, tipo, identificacion, correo, telefono), cambiar_estado(id, habilitado) | Usuario / lista |
-| catalogo_service | listar_libros(texto), obtener_libro(id), registrar_libro(titulo, autor, isbn, editorial, anio, categoria), listar_ejemplares(id_titulo=None), obtener_ejemplar(id), registrar_ejemplar(id_titulo, codigo, ubicacion), cambiar_estado_ejemplar(id, estado, motivo) | Libro / Ejemplar / listas |
-| prestamo_service | registrar(id_usuario, id_ejemplar), obtener(id), listar_activos(texto) | Prestamo / lista |
-| devolucion_service | registrar(id_prestamo, observaciones, fuera_de_servicio, motivo), de_prestamo(id), retraso_de(id) | (Devolucion, Retraso o None) |
-| consulta_service | resumen(), disponibilidad(texto), poseedor(codigo), historial(tipo, texto) | dict / listas |
-
-Pendiente del equipo (US-08): criterio de conteo de los días de retraso (en la demo: días naturales).
+Pendiente del equipo (US-08): criterio de conteo de los días de retraso (ahora: días naturales).

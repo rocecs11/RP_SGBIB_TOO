@@ -1,31 +1,36 @@
+import sqlite3
 from models import Usuario
-from . import _demo_datos as db
+from repositories import usuario_repo
 from .errores import ReglaNegocioError
 
 
 class UsuarioService:
     def listar(self, texto=""):
-        t = (texto or "").strip().lower()
-        return [u for u in db.usuarios
-                if not t or t in f"{u.nombre} {u.apellido} {u.identificacion} {u.correo}".lower()]
+        return usuario_repo.listar(texto)
 
     def obtener(self, id_usuario):
-        return next((u for u in db.usuarios if u.id_usuario == int(id_usuario)), None)
+        try:
+            return usuario_repo.obtener(id_usuario)
+        except (TypeError, ValueError):
+            return None
 
     def registrar(self, nombre, apellido, tipo, identificacion, correo="", telefono=""):
         nombre, apellido, identificacion = (nombre or "").strip(), (apellido or "").strip(), (identificacion or "").strip()
         if not nombre or not apellido or not identificacion:
             raise ReglaNegocioError("Nombre, apellido e identificación son obligatorios.")
-        if any(u.identificacion.lower() == identificacion.lower() for u in db.usuarios):   # RN-01
+        if usuario_repo.obtener_por_identificacion(identificacion):                       # RN-01
             raise ReglaNegocioError(f"Ya existe un usuario con la identificación {identificacion}.")
-        u = Usuario(db.siguiente_id(db.usuarios, "id_usuario"), nombre, apellido, tipo or "Estudiante",
-                    identificacion, (correo or "").strip(), (telefono or "").strip(), True)   # RN-02
-        db.usuarios.append(u)
-        return u
+        u = Usuario(None, nombre, apellido, tipo or "Estudiante", identificacion,
+                    (correo or "").strip(), (telefono or "").strip(), True)               # RN-02
+        try:
+            return usuario_repo.guardar(u)
+        except sqlite3.IntegrityError:        # otra solicitud la registró justo antes (la BD lo impide)
+            raise ReglaNegocioError(f"Ya existe un usuario con la identificación {identificacion}.")
 
     def cambiar_estado(self, id_usuario, habilitado):
         u = self.obtener(id_usuario)
         if not u:
             raise ReglaNegocioError("El usuario no existe.")
+        usuario_repo.actualizar_estado(u.id_usuario, habilitado)
         u.habilitado = bool(habilitado)
         return u

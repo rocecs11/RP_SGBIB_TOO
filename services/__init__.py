@@ -1,5 +1,5 @@
 """Servicios de negocio. La interfaz (routes/) solo usa estas instancias.
-TEMPORAL: implementaciones de demostración con datos en memoria; el equipo las reemplaza por las reales."""
+Las reglas de negocio se aplican aquí; el acceso a datos se delega en el paquete `repositories` (SQLite)."""
 from .errores import ReglaNegocioError
 from .autenticacion_service import AutenticacionService
 from .usuario_service import UsuarioService
