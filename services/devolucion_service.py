@@ -1,34 +1,36 @@
 from datetime import date
 from models import Devolucion, Retraso, Estado
-from . import _demo_datos as db
+from repositories import db, ejemplar_repo, prestamo_repo, devolucion_repo
 from .errores import ReglaNegocioError
 
 
 class DevolucionService:
     def registrar(self, id_prestamo, observaciones="", fuera_de_servicio=False, motivo=None):
-        p = next((x for x in db.prestamos if str(x.id_prestamo) == str(id_prestamo)), None)
-        if not p or p.estado != Estado.ACTIVO:
-            raise ReglaNegocioError("No existe un préstamo activo para devolver.")
-        if fuera_de_servicio and motivo not in Estado.MOTIVOS:
-            raise ReglaNegocioError("Indique el motivo: daño o mantenimiento.")
-        hoy = date.today()
-        d = Devolucion(db.siguiente_id(db.devoluciones, "id_devolucion"), p.id_prestamo, hoy, (observaciones or "").strip())
-        db.devoluciones.append(d)
-        p.estado = Estado.DEVUELTO                                                # RN-11
-        retraso = None
-        if hoy > p.fecha_devolucion_estimada:                                     # RN-12
-            # PENDIENTE DEL EQUIPO (US-08): criterio de conteo de días. Aquí: días naturales de diferencia.
-            retraso = Retraso(db.siguiente_id(db.retrasos, "id_retraso"), p.id_prestamo, (hoy - p.fecha_devolucion_estimada).days)
-            db.retrasos.append(retraso)
-        e = next(x for x in db.ejemplares if x.id_ejemplar == p.id_ejemplar)
-        if fuera_de_servicio:
-            e.estado, e.motivo = Estado.FUERA_DE_SERVICIO, motivo                 # RN-11 / RN-13
-        else:
-            e.estado, e.motivo = Estado.DISPONIBLE, None
-        return d, retraso
+        with db.transaccion():          # devolución + préstamo cerrado + retraso + estado del ejemplar: todo o nada
+            try:
+                p = prestamo_repo.obtener(int(id_prestamo))
+            except (TypeError, ValueError):
+                p = None
+            if not p or p.estado != Estado.ACTIVO:
+                raise ReglaNegocioError("No existe un préstamo activo para devolver.")
+            if fuera_de_servicio and motivo not in Estado.MOTIVOS:
+                raise ReglaNegocioError("Indique el motivo: daño o mantenimiento.")
+            hoy = date.today()
+            d = devolucion_repo.guardar(Devolucion(None, p.id_prestamo, hoy, (observaciones or "").strip()))
+            prestamo_repo.marcar_devuelto(p.id_prestamo)                          # RN-11
+            retraso = None
+            if hoy > p.fecha_devolucion_estimada:                                 # RN-12
+                # PENDIENTE DEL EQUIPO (US-08): criterio de conteo de días. Aquí: días naturales de diferencia.
+                retraso = devolucion_repo.guardar_retraso(
+                    Retraso(None, p.id_prestamo, (hoy - p.fecha_devolucion_estimada).days))
+            if fuera_de_servicio:
+                ejemplar_repo.actualizar_estado(p.id_ejemplar, Estado.FUERA_DE_SERVICIO, motivo)   # RN-11 / RN-13
+            else:
+                ejemplar_repo.actualizar_estado(p.id_ejemplar, Estado.DISPONIBLE, None)
+            return d, retraso
 
     def de_prestamo(self, id_prestamo):
-        return next((d for d in db.devoluciones if d.id_prestamo == id_prestamo), None)
+        return devolucion_repo.obtener_de_prestamo(id_prestamo)
 
     def retraso_de(self, id_prestamo):
-        return next((r for r in db.retrasos if r.id_prestamo == id_prestamo), None)
+        return devolucion_repo.retraso_de_prestamo(id_prestamo)

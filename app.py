@@ -7,6 +7,12 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(config)
 
+    # Persistencia: crea biblioteca.db y las tablas si es la primera ejecución, y el bibliotecario de prueba
+    from repositories import db
+    from database.init_db import asegurar_admin
+    db.inicializar()
+    asegurar_admin()
+
     from routes.auth_routes import auth_bp
     from routes.usuarios_routes import usuarios_bp
     from routes.catalogo_routes import catalogo_bp

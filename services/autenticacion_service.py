@@ -1,12 +1,12 @@
-from . import _demo_datos as db
+from werkzeug.security import check_password_hash
+from repositories import bibliotecario_repo
 
 
 class AutenticacionService:
-    """Valida el acceso del bibliotecario (la contraseña real debería ir cifrada)."""
+    """Valida el acceso del bibliotecario. La contraseña se guarda cifrada (hash) en la base de datos."""
 
     def iniciar_sesion(self, usuario, contrasena):
-        usuario = (usuario or "").strip()
-        for b in db.bibliotecarios:
-            if b.usuario == usuario and b.contrasena == contrasena:
-                return b
+        b = bibliotecario_repo.obtener_por_usuario((usuario or "").strip())
+        if b and check_password_hash(b.contrasena, contrasena or ""):
+            return b
         return None

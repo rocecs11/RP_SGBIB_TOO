@@ -1,36 +1,44 @@
+import sqlite3
 from datetime import date
 from models import Libro, Ejemplar, Estado
-from . import _demo_datos as db
+from repositories import libro_repo, ejemplar_repo
 from .errores import ReglaNegocioError
 
 
 class CatalogoService:
     def listar_libros(self, texto=""):
-        t = (texto or "").strip().lower()
-        return [l for l in db.libros if not t or t in f"{l.titulo} {l.autor} {l.isbn}".lower()]
+        return libro_repo.listar(texto)
 
     def obtener_libro(self, id_titulo):
-        return next((l for l in db.libros if l.id_titulo == int(id_titulo)), None)
+        try:
+            return libro_repo.obtener(id_titulo)
+        except (TypeError, ValueError):
+            return None
 
     def registrar_libro(self, titulo, autor, isbn, editorial="", anio_publicacion=None, categoria=""):
         titulo, autor, isbn = (titulo or "").strip(), (autor or "").strip(), (isbn or "").strip()
         if not titulo or not autor or not isbn:
             raise ReglaNegocioError("Título, autor e ISBN son obligatorios.")
-        if any(l.isbn == isbn for l in db.libros):
+        if libro_repo.obtener_por_isbn(isbn):
             raise ReglaNegocioError(f"Ya existe un título con el ISBN {isbn}.")
         try:
             anio = int(anio_publicacion) if anio_publicacion else None
         except ValueError:
             raise ReglaNegocioError("El año de publicación debe ser un número.")
-        l = Libro(db.siguiente_id(db.libros, "id_titulo"), isbn, titulo, autor, (editorial or "").strip(), anio, (categoria or "").strip())
-        db.libros.append(l)
-        return l
+        l = Libro(None, isbn, titulo, autor, (editorial or "").strip(), anio, (categoria or "").strip())
+        try:
+            return libro_repo.guardar(l)
+        except sqlite3.IntegrityError:
+            raise ReglaNegocioError(f"Ya existe un título con el ISBN {isbn}.")
 
     def listar_ejemplares(self, id_titulo=None):
-        return [e for e in db.ejemplares if id_titulo is None or e.id_titulo == int(id_titulo)]
+        return ejemplar_repo.listar(id_titulo)
 
     def obtener_ejemplar(self, id_ejemplar):
-        return next((e for e in db.ejemplares if e.id_ejemplar == int(id_ejemplar)), None)
+        try:
+            return ejemplar_repo.obtener(id_ejemplar)
+        except (TypeError, ValueError):
+            return None
 
     def registrar_ejemplar(self, id_titulo, codigo, ubicacion=""):
         codigo = (codigo or "").strip()
@@ -38,12 +46,13 @@ class CatalogoService:
             raise ReglaNegocioError("El título no existe.")
         if not codigo:
             raise ReglaNegocioError("El código del ejemplar es obligatorio.")
-        if any(e.codigo.lower() == codigo.lower() for e in db.ejemplares):
+        if ejemplar_repo.obtener_por_codigo(codigo):
             raise ReglaNegocioError(f"Ya existe un ejemplar con el código {codigo}.")
-        e = Ejemplar(db.siguiente_id(db.ejemplares, "id_ejemplar"), int(id_titulo), codigo, date.today(),
-                     (ubicacion or "").strip(), Estado.DISPONIBLE)                 # RN-04
-        db.ejemplares.append(e)
-        return e
+        e = Ejemplar(None, int(id_titulo), codigo, date.today(), (ubicacion or "").strip(), Estado.DISPONIBLE)   # RN-04
+        try:
+            return ejemplar_repo.guardar(e)
+        except sqlite3.IntegrityError:
+            raise ReglaNegocioError(f"Ya existe un ejemplar con el código {codigo}.")
 
     def cambiar_estado_ejemplar(self, id_ejemplar, nuevo_estado, motivo=None):
         e = self.obtener_ejemplar(id_ejemplar)
@@ -59,4 +68,5 @@ class CatalogoService:
             e.estado, e.motivo = Estado.DISPONIBLE, None
         else:
             raise ReglaNegocioError("Estado no permitido.")
+        ejemplar_repo.actualizar_estado(e.id_ejemplar, e.estado, e.motivo)
         return e
